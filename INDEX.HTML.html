@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Vehicle Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 768px) {
+            #sidebar {
+                transform: translateX(-100%);
+                z-index: 40;
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+        }
+        #module-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .sidebar-link.active {
+            background-color: #0ea5e9;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .sidebar-link.active i {
+            color: white;
+        }
+        .sidebar-link.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex">
+
+    <aside id="sidebar" class="bg-slate-800 text-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 md:relative md:translate-x-0">
+        <div class="px-4 mb-10">
+            <h1 class="text-2xl font-bold flex items-center gap-3">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Smart Vehicle</span>
+            </h1>
+            <p class="text-xs text-slate-400">Management Dashboard</p>
+        </div>
+        <nav id="nav-links">
+            <a href="#" class="sidebar-link flex items-center space-x-3 py-3 px-4 rounded-lg text-slate-200 hover:bg-slate-700 transition duration-200" data-module="fingerprint">
+                <i data-lucide="fingerprint" class="text-sky-400"></i>
+                <span>Fingerprint Unlock</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center space-x-3 py-3 px-4 rounded-lg text-slate-200 hover:bg-slate-700 transition duration-200" data-module="ai_detector">
+                <i data-lucide="scan-line" class="text-sky-400"></i>
+                <span>AI Road Detector</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center space-x-3 py-3 px-4 rounded-lg text-slate-200 hover:bg-slate-700 transition duration-200" data-module="gps_tracker">
+                <i data-lucide="map-pin" class="text-sky-400"></i>
+                <span>GPS Tracker</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center space-x-3 py-3 px-4 rounded-lg text-slate-200 hover:bg-slate-700 transition duration-200" data-module="fire_detection">
+                <i data-lucide="flame" class="text-sky-400"></i>
+                <span>Fire Detection</span>
+            </a>
+            <a href="#" class="sidebar-link flex items-center space-x-3 py-3 px-4 rounded-lg text-slate-200 hover:bg-slate-700 transition duration-200" data-module="overload_detector">
+                <i data-lucide="arrow-down-up" class="text-sky-400"></i>
+                <span>Overload Detector</span>
+            </a>
+        </nav>
+    </aside>
+
+    <div class="flex-1 flex flex-col">
+        <header class="bg-white shadow-md p-4 flex justify-between items-center md:hidden">
+            <div class="flex items-center gap-2">
+                 <i data-lucide="layout-dashboard" class="text-slate-700"></i>
+                 <h2 id="module-title" class="text-lg font-semibold text-slate-700">Dashboard</h2>
+            </div>
+            <button id="menu-btn" class="p-2 rounded-md hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <i data-lucide="menu" class="h-6 w-6 text-slate-600"></i>
+            </button>
+        </header>
+
+        <main id="module-container" class="flex-1 p-2 md:p-4 bg-slate-100 overflow-y-auto">
+            <iframe id="module-frame" class="rounded-xl shadow-lg" title="Module Content"></iframe>
+        </main>
+    </div>
+
+    <template id="template-fingerprint">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+        <script src="https://unpkg.com/lucide@latest"></script>
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+            .card { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 1rem; border: 1px solid #e5e7eb; }
+            .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+            .shake { animation: shake 0.5s ease-in-out; }
+            @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+            .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; font-size: 1.25rem; }
+            .fingerprint-scan { animation: pulse-blue 1.5s infinite; }
+            @keyframes pulse-blue { 50% { opacity: 0.5; } }
+        </style>
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="w-full max-w-lg mx-auto">
+                <div id="unlock-card" class="card bg-white">
+                    <div class="border-b flex justify-between items-center p-4">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i id="lock-icon" data-lucide="lock" class="w-6 h-6 mr-3 text-red-500 transition-colors"></i>
+                            Vehicle Access Control
+                        </h2>
+                        <span id="unlock-status" class="px-3 py-1 rounded-full text-white bg-slate-500 text-sm font-semibold">LOCKED</span>
+                    </div>
+                    <div class="p-6">
+                        <div id="user-info-section" class="hidden">
+                            <div class="flex justify-between items-center mb-5">
+                                <div class="flex items-center space-x-4">
+                                    <div id="avatar-placeholder" class="avatar bg-slate-300"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-gray-500">Welcome Back,</span>
+                                        <span id="current-auth-user" class="text-lg font-semibold text-gray-800"></span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2">
+                                     <button onclick="showLoginAnalytics()" class="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="Login Analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></button>
+                                     <button onclick="showChangePasswordForm()" class="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="Change Password"><i data-lucide="key-round" class="w-5 h-5"></i></button>
+                                     <button onclick="showManageUsers()" class="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="Manage Users"><i data-lucide="users" class="w-5 h-5"></i></button>
+                                     <button onclick="showAccessLog()" class="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200" title="View Access Log"><i data-lucide="history" class="w-5 h-5"></i></button>
+                                </div>
+                            </div>
+                             <p class="text-sm text-center text-green-600 h-5 mb-5">Vehicle is unlocked and ready to use.</p>
+                            <button onclick="logout()" class="w-full h-12 flex justify-center items-center bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700">Logout</button>
+                        </div>
+                        <div id="login-form-section">
+                            <div class="flex justify-end mb-4">
+                                <button onclick="showAddUserForm()" class="flex items-center space-x-2 p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 text-sm font-medium" title="Add New User">
+                                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                    <span>Add User</span>
+                                </button>
+                            </div>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="user-select" class="block text-sm font-medium text-gray-700">Select User</label>
+                                    <select id="user-select" class="mt-1 block w-full p-2 border border-gray-300 rounded-md"></select>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between items-center">
+                                        <label for="password-input" class="block text-sm font-medium text-gray-700">Password</label>
+                                        <a href="#" onclick="checkPassword()" class="text-sm text-blue-600 hover:underline">Forgot Password?</a>
+                                    </div>
+                                    <div class="relative mt-1">
+                                        <input type="password" id="password-input" placeholder="Enter Password" class="w-full p-2 border border-gray-300 rounded-lg pr-10">
+                                        <button onclick="togglePasswordVisibility()" type="button" class="absolute inset-y-0 right-0 px-3"><i id="password-toggle-icon" data-lucide="eye" class="w-5 h-5 text-gray-500"></i></button>
+                                    </div>
+                                </div>
+                                <p id="error-message" class="text-sm text-center text-red-600 h-5"></p>
+                                <button onclick="login()" class="w-full h-12 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700">Login</button>
+                            </div>
+                        </div>
+                        <div id="lockout-section" class="hidden text-center p-4 bg-red-100 text-red-800 rounded-lg">
+                            <p class="font-semibold">Too many failed attempts.</p>
+                            <p class="text-sm">Please try again in <span id="lockout-timer" class="font-bold">30</span> seconds.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="app-modal" class="modal-backdrop hidden"><div class="bg-white p-6 rounded-xl w-full max-w-md"><div class="flex justify-between items-center border-b pb-3 mb-4"><h3 id="modal-title" class="text-2xl font-bold"></h3><button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-6 h-6"></i></button></div><div id="modal-content" class="max-h-[60vh] overflow-y-auto text-sm"></div></div></div>
+        </div>
+        <script>
+            let USERS;
+            let isEngineOn = false, accessLog = [], activeUser = null, failedAttempts = 0, isLockedOut = false;
+
+            const savedUsers = localStorage.getItem('vehicleUsers');
+            if (savedUsers) {
+                USERS = JSON.parse(savedUsers);
+            } else {
+                USERS = [{ name: "Shivam", role: "Vehicle Owner", password: "123", loginCount: 0, lastLogin: null, loginHistory: [], totalDistance: 0 }];
+                localStorage.setItem('vehicleUsers', JSON.stringify(USERS));
+            }
+
+            function saveUsersToLocalStorage() {
+                localStorage.setItem('vehicleUsers', JSON.stringify(USERS));
+            }
+            
+            function showLoggedInView(user) {
+                activeUser = user;
+                isEngineOn = true;
+                document.getElementById('login-form-section').classList.add('hidden');
+                document.getElementById('user-info-section').classList.remove('hidden');
+                document.getElementById('current-auth-user').textContent = user.name;
+                document.getElementById('avatar-placeholder').innerHTML = generateAvatar(user.name);
+                document.getElementById('unlock-status').textContent = 'UNLOCKED';
+                document.getElementById('unlock-status').className = 'px-3 py-1 rounded-full text-white bg-green-500 text-sm font-semibold';
+                document.getElementById('lock-icon').setAttribute('data-lucide', 'unlock');
+                document.getElementById('lock-icon').classList.replace('text-red-500', 'text-green-500');
+                lucide.createIcons();
+            }
+
+            function openModal(title, content = '') { document.getElementById('modal-title').textContent = title; document.getElementById('modal-content').innerHTML = content; document.getElementById('app-modal').classList.remove('hidden'); lucide.createIcons(); }
+            function closeModal() { document.getElementById('app-modal').classList.add('hidden'); document.getElementById('modal-content').innerHTML = ''; }
+            function triggerAnimation(elemId, animClass) { const elem = document.getElementById(elemId); elem.classList.add(animClass); setTimeout(() => elem.classList.remove(animClass), 500); }
+            function generateAvatar(name) { const initial = name.charAt(0).toUpperCase(); const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#3b82f6']; const color = colors[name.length % colors.length]; return `<div class="avatar" style="background-color:${color}">${initial}</div>`; }
+            function togglePasswordVisibility() { const i = document.getElementById('password-input'), t = document.getElementById('password-toggle-icon'); if (i.type === 'password') { i.type = 'text'; t.setAttribute('data-lucide', 'eye-off'); } else { i.type = 'password'; t.setAttribute('data-lucide', 'eye'); } lucide.createIcons(); }
+            function logAccessAttempt(user, method, status) { accessLog.unshift({ timestamp: new Date(), user, method, status }); if (accessLog.length > 20) accessLog.pop(); }
+            function showAccessLog() { if (accessLog.length === 0) { openModal("System Access Log", `<pre class="font-sans">No access attempts logged yet.</pre>`); return; } let content = "Time        | User        | Method      | Status\n" + "-".repeat(51) + "\n"; accessLog.forEach(log => { content += `${log.timestamp.toLocaleTimeString().padEnd(12)}| ${log.user.padEnd(12)}| ${log.method.padEnd(12)}| ${log.status}\n`; }); openModal("System Access Log", `<pre>${content}</pre>`); }
+            function showAddUserForm() { const formHtml = `<form id="add-user-form" class="space-y-4 font-sans"><input type="text" id="new-user-name" placeholder="Full Name" required class="w-full p-2 border rounded"><select id="new-user-role" class="w-full p-2 border rounded"><option>Authorized User</option><option>Guest</option></select><input type="password" id="new-user-password" placeholder="Password" required class="w-full p-2 border rounded"><button type="submit" class="w-full p-2 bg-indigo-600 text-white rounded">Save User</button></form>`; openModal("Add New User", formHtml); document.getElementById('add-user-form').addEventListener('submit', handleAddNewUser); }
+            
+            function handleAddNewUser(event) {
+                event.preventDefault();
+                const name = document.getElementById('new-user-name').value;
+                const role = document.getElementById('new-user-role').value;
+                const password = document.getElementById('new-user-password').value;
+                if (!name || !password) {
+                    alert('Name and Password are required.');
+                    return;
+                }
+                const isPasswordTaken = USERS.some(user => user.password === password);
+                if (isPasswordTaken) {
+                    alert('This password is already in use. Please choose a different one.');
+                    return;
+                }
+                USERS.push({ name, role, password, loginCount: 0, lastLogin: null, loginHistory: [], totalDistance: 0 });
+                saveUsersToLocalStorage();
+                alert(`User '${name}' added!`);
+                populateUserDropdown();
+                closeModal();
+            }
+
+            function showManageUsers() { let listHtml = '<div class="font-sans space-y-2">'; USERS.forEach((user, index) => { const isOwner = user.role === 'Vehicle Owner'; listHtml += `<div class="flex items-center justify-between p-2 bg-slate-100 rounded-lg"><div class="flex items-center space-x-3">${generateAvatar(user.name)}<div><p class="font-semibold">${user.name}</p><p class="text-sm text-slate-500">${user.role}</p></div></div><button onclick="deleteUser(${index})" class="${isOwner ? 'opacity-25 cursor-not-allowed' : 'text-red-500 hover:bg-red-100'} p-2 rounded-full" ${isOwner ? 'disabled' : ''}><i data-lucide="trash-2" class="w-5 h-5"></i></button></div>`; }); listHtml += '</div>'; openModal("Manage Users", listHtml); }
+            function deleteUser(index) {
+                if (USERS[index].role === 'Vehicle Owner') return;
+                const user = USERS[index];
+                const confirmationHtml = `
+                    <div class="font-sans text-center">
+                        <p class="mb-4">Are you sure you want to delete the user <strong class="text-red-600">${user.name}</strong>?</p>
+                        <p class="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
+                        <div class="flex justify-end gap-3">
+                            <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
+                            <button onclick="confirmDeleteUser(${index})" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Yes, Delete</button>
+                        </div>
+                    </div>
+                `;
+                openModal("Confirm Deletion", confirmationHtml);
+            }
+            function confirmDeleteUser(index) {
+                USERS.splice(index, 1);
+                saveUsersToLocalStorage();
+                populateUserDropdown();
+                showManageUsers();
+            }
+            function showLoginAnalytics() { let analyticsHtml = `<div class="font-sans space-y-4">`; USERS.forEach(user => { analyticsHtml += `<div class="p-3 bg-slate-50 rounded-lg"><div class="flex items-center justify-between mb-2"><div class="flex items-center space-x-3">${generateAvatar(user.name)}<div><p class="font-bold text-base">${user.name}</p><p class="text-xs text-slate-500">Total Logins: ${user.loginCount} | Total Distance: ${user.totalDistance.toFixed(2)} km</p></div></div></div>`; if (user.loginHistory.length > 0) { analyticsHtml += `<ul class="space-y-1 list-disc list-inside text-slate-600 pl-2">`; [...user.loginHistory].reverse().slice(0, 5).forEach(timestamp => { analyticsHtml += `<li>${new Date(timestamp).toLocaleString()}</li>`; }); analyticsHtml += `</ul>`; } else { analyticsHtml += `<p class="text-sm text-slate-500 pl-2">No login history yet.</p>`; } analyticsHtml += `</div>`; }); analyticsHtml += `</div>`; openModal("Login & Usage Analytics", analyticsHtml); }
+            function populateUserDropdown() { const userSelect = document.getElementById('user-select'); if (!userSelect) return; userSelect.innerHTML = ''; USERS.forEach((user, index) => { const option = document.createElement('option'); option.value = index; option.textContent = `${user.name} (${user.role})`; userSelect.appendChild(option); }); }
+            async function login() { if (isLockedOut) { document.getElementById('error-message').textContent = 'System is locked. Please wait.'; return; } const userIndex = document.getElementById('user-select').value; const enteredPassword = document.getElementById('password-input').value; const errorMessage = document.getElementById('error-message'); if (USERS.length === 0 || !userIndex) { errorMessage.textContent = 'Please add or select a user.'; return; } const selectedUser = USERS[userIndex]; const scanHtml = `<div class="font-sans text-center p-4"><div id="scan-animation" class="fingerprint-scan"><i data-lucide="fingerprint" class="w-24 h-24 text-blue-500 mx-auto"></i></div><p id="scan-message" class="mt-4 font-semibold text-lg">Scanning...</p></div>`; openModal("Biometric Authentication", scanHtml); await new Promise(resolve => setTimeout(resolve, 800)); logAccessAttempt(selectedUser.name, 'Fingerprint', 'Mismatch'); document.getElementById('scan-message').textContent = 'Fingerprint Mismatch'; const scanAnimation = document.getElementById('scan-animation'); scanAnimation.classList.remove('fingerprint-scan'); scanAnimation.innerHTML = '<i data-lucide="shield-x" class="w-24 h-24 text-red-500 mx-auto"></i>'; lucide.createIcons(); await new Promise(resolve => setTimeout(resolve, 600)); closeModal(); if (selectedUser && enteredPassword === selectedUser.password) { logAccessAttempt(selectedUser.name, 'Password', 'Success'); isEngineOn = true; activeUser = selectedUser; failedAttempts = 0; selectedUser.loginCount++; selectedUser.lastLogin = new Date(); selectedUser.loginHistory.push(new Date()); showLoggedInView(selectedUser); saveUsersToLocalStorage(); localStorage.setItem('isLoggedIn', 'true'); localStorage.setItem('loggedInUser', selectedUser.name); window.parent.postMessage('login-success', '*'); } else { logAccessAttempt(selectedUser ? selectedUser.name : 'Unknown', 'Password', 'Failed'); failedAttempts++; errorMessage.textContent = `Wrong password! (Attempt ${failedAttempts} of 3)`; triggerAnimation('password-input', 'shake'); document.getElementById('password-input').value = ''; if (failedAttempts >= 3) { isLockedOut = true; document.getElementById('login-form-section').classList.add('hidden'); document.getElementById('lockout-section').classList.remove('hidden'); let timeLeft = 30; const timerElement = document.getElementById('lockout-timer'); timerElement.textContent = timeLeft; const lockoutInterval = setInterval(() => { timeLeft--; timerElement.textContent = timeLeft; if (timeLeft <= 0) { clearInterval(lockoutInterval); isLockedOut = false; failedAttempts = 0; document.getElementById('lockout-section').classList.add('hidden'); document.getElementById('login-form-section').classList.remove('hidden'); errorMessage.textContent = 'System unlocked. You can try again.'; } }, 1000); } } lucide.createIcons(); }
+            function logout() { const tripDistance = (Math.random() * 13) + 2; if (activeUser) { activeUser.totalDistance += tripDistance; saveUsersToLocalStorage(); alert(`Trip Ended!\\nYou travelled ${tripDistance.toFixed(2)} km.`); logAccessAttempt(activeUser.name, 'Logout', 'Success'); } isEngineOn = false; activeUser = null; document.getElementById('user-info-section').classList.add('hidden'); document.getElementById('login-form-section').classList.remove('hidden'); document.getElementById('unlock-status').textContent = 'LOCKED'; document.getElementById('unlock-status').className = 'px-3 py-1 rounded-full text-white bg-slate-500 text-sm font-semibold'; document.getElementById('lock-icon').setAttribute('data-lucide', 'lock'); document.getElementById('lock-icon').classList.replace('text-green-500', 'text-red-500'); document.getElementById('error-message').textContent = ''; document.getElementById('password-input').value = ''; localStorage.removeItem('isLoggedIn'); localStorage.removeItem('loggedInUser'); window.parent.postMessage('logout-event', '*'); lucide.createIcons(); }
+            
+            function checkPassword() {
+                const userIndex = document.getElementById('user-select').value;
+                if (!userIndex) {
+                    alert('Please select a user from the dropdown first.');
+                    return;
+                }
+                const selectedUser = USERS[userIndex];
+                const securityCode = prompt(`A security code has been sent to the device of "${selectedUser.name}".\nPlease enter the 4-digit code to view the password. (Hint: The code is 1234)`);
+                
+                if (securityCode === "1234") {
+                    alert(`Verification successful!\nThe password for "${selectedUser.name}" is: ${selectedUser.password}`);
+                } else if (securityCode !== null) {
+                    alert("Incorrect code. Please try again.");
+                }
+            }
+
+            function showChangePasswordForm() {
+                const formHtml = `
+                    <form id="change-password-form" class="space-y-4 font-sans">
+                        <div>
+                            <label class="block text-sm font-medium">Current Password</label>
+                            <input type="password" id="current-password" required class="w-full p-2 border rounded mt-1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">New Password</label>
+                            <input type="password" id="new-password" required class="w-full p-2 border rounded mt-1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Confirm New Password</label>
+                            <input type="password" id="confirm-password" required class="w-full p-2 border rounded mt-1">
+                        </div>
+                        <p id="change-password-error" class="text-sm text-center text-red-600 h-5"></p>
+                        <button type="submit" class="w-full p-2 bg-indigo-600 text-white rounded">Update Password</button>
+                    </form>
+                `;
+                openModal("Change Password", formHtml);
+                document.getElementById('change-password-form').addEventListener('submit', handleChangePassword);
+            }
+            
+            function handleChangePassword(event) {
+                event.preventDefault();
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                const errorMessageElem = document.getElementById('change-password-error');
+
+                if (currentPassword !== activeUser.password) {
+                    errorMessageElem.textContent = 'Incorrect current password.';
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
+                    errorMessageElem.textContent = 'New passwords do not match.';
+                    return;
+                }
+                if (newPassword === currentPassword) {
+                    errorMessageElem.textContent = 'New password cannot be the same as the old one.';
+                    return;
+                }
+                const isPasswordTaken = USERS.some(user => user.password === newPassword && user.name !== activeUser.name);
+                if (isPasswordTaken) {
+                    errorMessageElem.textContent = 'This password is already in use by another user.';
+                    return;
+                }
+                activeUser.password = newPassword;
+                saveUsersToLocalStorage();
+                alert('Password changed successfully!');
+                closeModal();
+            }
+            
+            window.onload = function() {
+                populateUserDropdown();
+                const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+                const userName = localStorage.getItem('loggedInUser');
+                if (isLoggedIn && userName) {
+                    const user = USERS.find(u => u.name === userName);
+                    if (user) {
+                        showLoggedInView(user);
+                    }
+                }
+                lucide.createIcons();
+            };
+        </script>
+    </template>
+    
+    <template id="template-ai_detector">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <style>
+            :root {
+                --color-brand-cyan: #06b6d4; --color-alert-red: #ef4444; --color-alert-glow: rgba(239, 68, 68, 0.5);
+                --color-caution-yellow: #f59e0b; --color-caution-glow: rgba(245, 158, 11, 0.5); --color-safe-green: #22c55e;
+                --road-dark: #566573; --road-asphalt: #2c3e50; --dashboard-bg: #1C2833;
+            }
+            body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; background-color: #fdfbf7; }
+            .dashboard-font { font-family: 'Orbitron', sans-serif; }
+            .road-container { position: absolute; inset: 0; background: linear-gradient(to bottom, #87CEEB 50%, #4682B4 100%); overflow: hidden; perspective: 200px; }
+            .road { position: absolute; width: 300%; height: 100%; background: var(--road-dark); left: 50%; bottom: 0; transform: translateX(-50%) rotateX(45deg); }
+            .road-lines { position: absolute; width: 100%; height: 100%; }
+            
+            /* MODIFICATION: Animation slowed from 1s to 2s for better mobile performance */
+            .line { position: absolute; left: 50%; transform: translateX(-50%); width: 2%; height: 15%; background: white; animation: move-lines 2s linear infinite; }
+            @keyframes move-lines { from { top: -15%; } to { top: 100%; } }
+            .line-1 { animation-delay: 0s; } .line-2 { animation-delay: 1s; } /* MODIFICATION: Adjusted delay */
+
+            /* MODIFICATION: All scenery/tree animations removed to prevent mobile lag */
+            /*
+            .scenery { position: absolute; width: 100%; height: 100%; }
+            .tree { position: absolute; bottom: 0; width: 150px; height: 300px; animation: move-scenery 5s linear infinite; }
+            .tree::before { content: ''; position: absolute; bottom: 0; left: 45%; width: 10%; height: 100%; background: #8B4513; }
+            .tree::after { content: ''; position: absolute; bottom: 50%; left: 0; width: 100%; height: 50%; background: #228B22; border-radius: 50%; }
+            .tree.left { left: 10%; } .tree.right { right: 10%; }
+            .tree-2 { animation-duration: 3s; animation-delay: -1.5s; transform: scale(0.7); }
+            .tree-3 { animation-duration: 8s; animation-delay: -4s; transform: scale(1.2); }
+            @keyframes move-scenery { from { transform: translateY(100vh) scale(0.2); opacity: 1; } to { transform: translateY(0) scale(2); opacity: 0; } }
+            */
+            /* END MODIFICATION */
+
+            .hazard-on-road { position: absolute; z-index: 10; display: none; will-change: transform, opacity, bottom; }
+            .pothole { width: 80px; height: 40px; background: var(--road-asphalt); clip-path: polygon(25% 0%, 75% 0%, 100% 25%, 90% 75%, 75% 100%, 25% 100%, 10% 80%, 0% 25%); }
+            .speed-breaker { width: 150px; height: 15px; background: repeating-linear-gradient(45deg, #f1c40f, #f1c40f 15px, var(--road-asphalt) 15px, var(--road-asphalt) 30px); border-radius: 5px; }
+            .rock { width: 25px; height: 25px; background-color: #4a4a4a; border-radius: 50% 40% 30% 60%; }
+            .bounding-box { position: absolute; inset: -10px; border: 3px solid var(--color-alert-red); border-radius: 10px; background: rgba(231, 76, 60, 0.2); animation: pulse-red-box 1s infinite; }
+            @keyframes pulse-red-box { 0%, 100% { box-shadow: 0 0 10px var(--color-alert-red); } 50% { box-shadow: 0 0 20px var(--color-alert-red); } }
+            #pov-scooter { position: absolute; width: 650px; height: 450px; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 20; pointer-events: none; }
+            .shake-impact { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+            @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+            .cowl-main { position: absolute; width: 500px; height: 250px; background: linear-gradient(145deg, #004a99, #002d5c); bottom: 20px; left: 50%; transform: translateX(-50%); border-radius: 50% 50% 30px 30px / 100px 100px 30px 30px; box-shadow: inset 0 15px 25px rgba(255,255,255,0.1), 0 10px 20px rgba(0,0,0,0.4); z-index: 5; }
+            .cowl-main::before { content: ''; position: absolute; width: 80%; height: 80px; top: 0; left: 10%; border-radius: 50%; background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent); }
+            #dashboard-screen { position: absolute; width: 280px; height: 160px; background: #0a0a0a; top: 40px; left: 50%; transform: translateX(-50%); border-radius: 35px; border: 1px solid #444; box-shadow: inset 0 0 20px rgba(0,0,0,1); padding: 15px; box-sizing: border-box; color: white; display: flex; align-items: center; justify-content: space-around; transition: box-shadow 0.3s ease-in-out; }
+            #dashboard-speed-content { border-left: 2px solid #444; }
+            .tvs-logo { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 40px; height: 20px; background: #444; border-radius: 5px; display: flex; justify-content: center; align-items: center; color: #aaa; font-size: 10px; font-weight: bold; }
+            .dashboard-alert-active { animation: pulse-dashboard 1s infinite; }
+            .dashboard-alert-major { --glow-color: var(--color-alert-glow); }
+            .dashboard-alert-minor { --glow-color: var(--color-caution-glow); }
+            @keyframes pulse-dashboard { 0%, 100% { box-shadow: 0 0 25px var(--glow-color), inset 0 0 20px rgba(0,0,0,1); } 50% { box-shadow: 0 0 40px var(--glow-color), inset 0 0 20px rgba(0,0,0,1); } }
+            .directional-arrow { position: absolute; top: 50%; transform: translateY(-50%); font-size: 2rem; color: var(--color-alert-red); display: none; animation: pulse-arrow 0.7s infinite; }
+            .arrow-left { left: 10px; } .arrow-right { right: 10px; }
+            @keyframes pulse-arrow { 0%, 100% { opacity: 1; transform: translateY(-50%) scale(1.1); } 50% { opacity: 0.6; transform: translateY(-50%) scale(1); } }
+            .mirror-stem { position: absolute; width: 12px; height: 150px; background: #333; bottom: 150px; z-index: 1; }
+            .mirror-stem.left { left: 110px; transform: rotate(-38deg); }
+            .mirror-stem.right { right: 110px; transform: rotate(38deg); }
+            .mirror { position: absolute; width: 110px; height: 75px; background: #222; border: 8px solid #383838; border-radius: 35% 15% 55% 25% / 45% 25% 60% 40%; z-index: 2; top: 0; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+            .mirror.left { left: 10px; transform: rotate(-18deg); }
+            .mirror.right { right: 10px; transform: rotate(18deg); }
+            .handlebar { position: absolute; width: 220px; height: 80px; bottom: 140px; z-index: 10; }
+            .handlebar.left { left: 0; } .handlebar.right { right: 0; }
+            .handle-grip { position: absolute; width: 130px; height: 40px; background: #222; border-radius: 20px; top: 25px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.4); }
+            .handlebar.left .handle-grip { left: 0; } .handlebar.right .handle-grip { right: 0; }
+            .controls { position: absolute; width: 75px; height: 65px; background: #2a2a2a; border-radius: 12px; top: 12px; box-shadow: 0 5px 10px rgba(0,0,0,0.2); }
+            .handlebar.left .controls { right: 25px; transform: skewX(10deg); }
+            .handlebar.right .controls { left: 25px; transform: skewX(-10deg); }
+            .icon-button { position: absolute; color: white; display: flex; justify-content: center; align-items: center; border-radius: 5px; }
+            .icon-button.red { background: #e74c3c; width: 30px; height: 30px; right: 8px; top: 18px; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+            .switch-button { background: #7f8c8d; width: 45px; height: 22px; position: absolute; left: 15px; top: 8px; border-radius: 5px; }
+            .switch-button.bottom { top: 38px; }
+        </style>
+        <div class="bg-black flex items-center justify-center min-h-screen">
+            <div class="w-full max-w-lg mx-auto bg-gray-900 rounded-2xl shadow-2xl overflow-hidden aspect-[9/16] relative flex flex-col">
+                <div class="road-container">
+                    
+                    <div class="road" id="road">
+                        <div class="road-lines">
+                            <div class="line line-1"></div> <div class="line line-2"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="hazard-pothole" class="hazard-on-road"><div class="pothole"></div><div class="bounding-box"></div></div>
+                <div id="hazard-breaker" class="hazard-on-road"><div class="speed-breaker"></div><div class="bounding-box"></div></div>
+                <div id="hazard-rock" class="hazard-on-road"><div class="rock"></div></div>
+                <div id="pov-scooter">
+                    <div class="mirror-stem left"></div><div class="mirror left"></div>
+                    <div class="mirror-stem right"></div><div class="mirror right"></div>
+                    <div class="cowl-main">
+                        <div id="dashboard-screen">
+                            <div class="directional-arrow arrow-left"><i class="fas fa-chevron-left"></i></div>
+                            <div id="dashboard-alert-content" class="w-full relative"><p class="dashboard-font text-2xl" style="color: var(--color-safe-green);">SAFE</p><p class="text-sm">All Clear</p></div>
+                            <div id="dashboard-speed-content" class="w-full text-center"><p id="speed-display" class="dashboard-font text-4xl">--</p><p class="text-xs">km/h</p></div>
+                            <div class="directional-arrow arrow-right"><i class="fas fa-chevron-right"></i></div>
+                            <div class="tvs-logo">TVS</div>
+                        </div>
+                    </div>
+                    <div class="handlebar left"><div class="controls left"><div class="switch-button"></div><div class="switch-button bottom"></div></div><div class="handle-grip"></div></div>
+                    <div class="handlebar right"><div class="controls right"><div class="icon-button red"><i class="fa-solid fa-triangle-exclamation"></i></div></div><div class="handle-grip"></div></div>
+                </div>
+                <div id="ui-overlay" class="absolute top-0 left-0 w-full h-full z-30 flex flex-col justify-between p-4 md:p-6 text-white">
+                    <div id="controls" class="absolute bottom-4 left-4 right-4 bg-black bg-opacity-60 backdrop-blur-sm p-4 rounded-xl text-center z-40">
+                        <p id="info-text" class="mb-3">Press 'Start Ride 1' to begin the simulation.</p>
+                        <div id="progress-bar-container" class="w-full bg-gray-700 rounded-full h-2.5 mb-4 hidden"><div id="progress-bar" class="bg-cyan-500 h-2.5 rounded-full" style="width: 0%"></div></div>
+                        <div id="main-controls" class="flex gap-2">
+                            <button id="start-ride-btn" class="flex-1 bg-cyan-500 hover:bg-cyan-600 font-bold py-3 px-4 rounded-lg transition-all">Start Ride 1 (Local)</button>
+                            <button id="reset-demo-btn" class="bg-red-600 hover:bg-red-700 font-bold py-3 px-4 rounded-lg transition-all" title="Reset Demo Data"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                        <div id="ride-2-controls" class="hidden flex gap-2"><button id="start-ride-2-btn" class="flex-1" style="background-color: var(--color-caution-yellow);" class="font-bold py-3 px-4 rounded-lg transition-all">Start Ride 2 (Network)</button></div>
+                    </div>
+                </div>
+                <div id="initial-screen" class="absolute inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center text-center p-6">
+                    <h1 class="text-4xl font-bold text-white mb-2">Smart Rider</h1><p class="text-cyan-300 text-lg mb-6">Hazard Detection Demo</p>
+                    <button id="start-system-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-4 px-8 rounded-lg text-xl transition-transform hover:scale-105">Start System</button>
+                </div>
+            </div>
+            <audio id="beep-sound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVdvT18=" preload="auto"></audio>
+            <audio id="engine-sound" src="data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABgAZGF0YQAXAABnZ2hoaGdnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2dnZ2-
+-
++` loop preload="auto"></audio>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dom = { beepSound: document.getElementById('beep-sound'), engineSound: document.getElementById('engine-sound'), initialScreen: document.getElementById('initial-screen'), startSystemBtn: document.getElementById('start-system-btn'), infoText: document.getElementById('info-text'), startRideBtn: document.getElementById('start-ride-btn'), mainControls: document.getElementById('main-controls'), ride2Controls: document.getElementById('ride-2-controls'), startRide2Btn: document.getElementById('start-ride-2-btn'), resetDemoBtn: document.getElementById('reset-demo-btn'), progressBarContainer: document.getElementById('progress-bar-container'), progressBar: document.getElementById('progress-bar'), dashboardScreen: document.getElementById('dashboard-screen'), dashboardAlertContent: document.getElementById('dashboard-alert-content'), speedDisplay: document.getElementById('speed-display'), road: document.getElementById('road'), povScooter: document.getElementById('pov-scooter'), directionalArrows: { left: document.querySelector('.arrow-left'), right: document.querySelector('.arrow-right') }, hazards: { pothole: document.getElementById('hazard-pothole'), breaker: document.getElementById('hazard-breaker'), rock: document.getElementById('hazard-rock'), } };
+            const CONFIG = { SIMULATION_DURATION: 25, NETWORK_AWARENESS_TIME: 8, APPROACH_DURATION: 4, LOCAL_ALERT_TIME: 2, HAZARDS: [ { id: 'breaker1', type: 'breaker', time: 4, duration: 3, name: 'Speed Breaker', isMajor: true, position: 50 }, { id: 'pothole1', type: 'pothole', time: 10, duration: 4, name: 'Deep Pothole', isMajor: true, position: 65 }, { id: 'rock1', type: 'rock', time: 15, duration: 2, name: 'Small Rock', isMajor: false, position: 35 }, { id: 'breaker2', type: 'breaker', time: 20, duration: 3, name: 'Speed Breaker', isMajor: true, position: 40 }, ], ICONS: { breaker: 'fa-grip-lines', pothole: 'fa-road-circle-xmark', rock: 'fa-gem' }, ANIMATION: { MIN_SCALE: 0.2, MAX_SCALE: 1.5, START_BOTTOM_PERCENT: 40, END_BOTTOM_PERCENT: 10, } };
+            let state = { animationFrameId: null, speedInterval: null, simulationTime: 0, lastFrameTime: 0, currentSpeed: 0, isAlertActive: false, isRideInProgress: false, };
+            dom.startSystemBtn.addEventListener('click', initializeSystem);
+            dom.startRideBtn.addEventListener('click', startRide);
+            dom.startRide2Btn.addEventListener('click', () => { dom.infoText.textContent = 'Network data active. Watch for advance warnings!'; setTimeout(startRide, 500); });
+            dom.resetDemoBtn.addEventListener('click', () => { localStorage.removeItem('networkHazards'); window.location.reload(); });
+            
+            // --- MODIFICATION: Added Audio Unlock for Mobile ---
+            function initializeSystem() { 
+                dom.startSystemBtn.textContent = "Initializing..."; 
+                dom.startSystemBtn.disabled = true; 
+                
+                // Play and immediately pause on the first user tap ("Start System").
+                // This "unlocks" the audio for the browser to allow future plays.
+                try {
+                    dom.beepSound.play();
+                    dom.beepSound.pause();
+                    dom.engineSound.play();
+                    dom.engineSound.pause();
+                } catch (e) {
+                    console.warn("Audio unlock failed, but proceeding.");
+                }
+                
+                setTimeout(() => dom.initialScreen.style.display = 'none', 1500); 
+            }
+            // --- END MODIFICATION ---
+
+            function animationLoop(timestamp) { if (!state.isRideInProgress) return; const deltaTime = (timestamp - state.lastFrameTime) / 1000; state.lastFrameTime = timestamp; state.simulationTime += deltaTime; dom.progressBar.style.width = `${(state.simulationTime / CONFIG.SIMULATION_DURATION) * 100}%`; const { activeAlert, distanceInMeters, visibleHazards } = processHazards(); state.isAlertActive = !!activeAlert; updateDashboard(activeAlert, distanceInMeters); renderVisibleHazards(visibleHazards); if (state.simulationTime >= CONFIG.SIMULATION_DURATION) { endRide('Ride 1 Finished. Start Ride 2 to see network benefits.'); } else { state.animationFrameId = requestAnimationFrame(animationLoop); } }
+            function processHazards() { let activeAlert = null; let distanceInMeters = null; let visibleHazards = []; const networkHazards = getNetworkHazards(); for (const hazard of CONFIG.HAZARDS) { const timeToHazard = hazard.time - state.simulationTime; const isNetworkAlert = hazard.isMajor && networkHazards.includes(hazard.id) && timeToHazard > 0 && timeToHazard < CONFIG.NETWORK_AWARENESS_TIME; const isLocalAlert = timeToHazard > 0 && timeToHazard < CONFIG.LOCAL_ALERT_TIME; if (isNetworkAlert && !activeAlert) { activeAlert = { ...hazard, name: `${hazard.name} (Network)` }; const speedInMps = (state.currentSpeed * 1000) / 3600; distanceInMeters = Math.round(speedInMps * timeToHazard); } else if (isLocalAlert && !activeAlert) { activeAlert = hazard; } if (state.simulationTime >= hazard.time && state.simulationTime < hazard.time + 0.1) { if (hazard.isMajor) { reportHazardToNetwork(hazard.id); dom.povScooter.classList.add('shake-impact'); setTimeout(() => dom.povScooter.classList.remove('shake-impact'), 400); } } const isVisibleOnRoad = timeToHazard > 0 && timeToHazard < CONFIG.APPROACH_DURATION; if (isNetworkAlert || isVisibleOnRoad || (state.simulationTime >= hazard.time && state.simulationTime < hazard.time + hazard.duration)) { visibleHazards.push(hazard); } } return { activeAlert, distanceInMeters, visibleHazards }; }
+            function renderVisibleHazards(hazardsToRender) { Object.values(dom.hazards).forEach(el => el.style.display = 'none'); hazardsToRender.forEach(hazard => { const hazardEl = dom.hazards[hazard.type]; if (!hazardEl) return; const timeToHazard = hazard.time - state.simulationTime; let progress = 1 - (timeToHazard / CONFIG.APPROACH_DURATION); progress = Math.max(0, Math.min(1, progress)); const { MIN_SCALE, MAX_SCALE, START_BOTTOM_PERCENT, END_BOTTOM_PERCENT } = CONFIG.ANIMATION; const scale = MIN_SCALE + progress * (MAX_SCALE - MIN_SCALE); const bottom = START_BOTTOM_PERCENT - progress * (START_BOTTOM_PERCENT - END_BOTTOM_PERCENT); hazardEl.style.display = 'block'; hazardEl.style.left = `${hazard.position}%`; hazardEl.style.bottom = `${bottom}%`; hazardEl.style.transform = `translateX(-50%) scale(${scale})`; hazardEl.style.opacity = progress < 0.95 ? '1' : '0'; }); }
+            function updateDashboard(hazard, distance) { dom.directionalArrows.left.style.display = 'none'; dom.directionalArrows.right.style.display = 'none'; if (!hazard) { dom.dashboardAlertContent.innerHTML = `<p class="dashboard-font text-2xl" style="color: var(--color-safe-green);">SAFE</p><p class="text-sm">All Clear</p>`; dom.dashboardScreen.className = ''; document.getElementById('dashboard-screen').style.boxShadow = 'inset 0 0 20px rgba(0,0,0,1)'; return; } let alertHTML = ''; if (hazard.isMajor) { dom.dashboardScreen.className = 'dashboard-alert-active dashboard-alert-major'; const distanceText = distance ? `<p class="text-lg dashboard-font">${distance}m</p>` : ''; alertHTML = `<p class="dashboard-font text-2xl animate-pulse" style="color: var(--color-alert-red);">ALERT!</p><p class="text-xs dashboard-font">${hazard.name}</p>${distanceText}`; if(dom.beepSound.paused) { dom.beepSound.play().catch(e => {}); } } else { dom.dashboardScreen.className = 'dashboard-alert-active dashboard-alert-minor'; alertHTML = `<p class="dashboard-font text-2xl" style="color: var(--color-caution-yellow);">CAUTION</p><p class="text-xs dashboard-font">${hazard.name}</p>`; } dom.dashboardAlertContent.innerHTML = alertHTML; if (hazard.position < 50) dom.directionalArrows.left.style.display = 'block'; if (hazard.position > 50) dom.directionalArrows.right.style.display = 'block'; }
+            function startRide() { if(state.isRideInProgress) return; state.isRideInProgress = true; state.simulationTime = 0; state.lastFrameTime = performance.now(); clearInterval(state.speedInterval); state.speedInterval = setInterval(() => { const baseSpeed = state.isAlertActive ? 30 : 50; state.currentSpeed = Math.max(0, baseSpeed + Math.floor(Math.random() * 10) - 5); dom.speedDisplay.textContent = state.currentSpeed; }, 700); dom.engineSound.loop = true; dom.engineSound.play().catch(e => {}); dom.infoText.textContent = 'Ride in progress...'; dom.mainControls.classList.add('hidden'); dom.ride2Controls.classList.add('hidden'); dom.progressBarContainer.classList.remove('hidden'); state.animationFrameId = requestAnimationFrame(animationLoop); }
+            function endRide(message) { state.isRideInProgress = false; cancelAnimationFrame(state.animationFrameId); clearInterval(state.speedInterval); dom.engineSound.pause(); updateDashboard(null); state.isAlertActive = false; dom.speedDisplay.textContent = '--'; dom.infoText.textContent = message; dom.ride2Controls.classList.remove('hidden'); dom.mainControls.classList.add('hidden'); dom.progressBar.style.width = '0%'; renderVisibleHazards([]); }
+            function reportHazardToNetwork(hazardId) { let networkHazards = getNetworkHazards(); if (!networkHazards.includes(hazardId)) { networkHazards.push(hazardId); } localStorage.setItem('networkHazards', JSON.stringify(networkHazards)); }
+            function getNetworkHazards() { return JSON.parse(localStorage.getItem('networkHazards')) || []; }
+        });
+        </script>
+    </template>
+
+    <template id="template-gps_tracker">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+        <script src="https://unpkg.com/lucide@latest"></script>
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+            .card { box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); border-radius: 1rem; border: 1px solid #e5e7eb; }
+            .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15,23,42,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+            #google-map-embed { filter: grayscale(30%); }
+        </style>
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="w-full max-w-4xl mx-auto">
+                <div class="card bg-white">
+                    <div class="border-b flex justify-between items-center p-4">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i data-lucide="map-pin" class="w-6 h-6 mr-3 text-emerald-600"></i>
+                            Live GPS Tracker
+                        </h2>
+                        <span id="vehicle-status" class="px-3 py-1 rounded-full text-white bg-slate-500 text-sm font-semibold">INITIALIZING</span>
+                    </div>
+                    <div class="p-6">
+                        <div class="w-full h-80 md:h-96 rounded-lg overflow-hidden border mb-6">
+                            <iframe 
+                                id="google-map-embed"
+                                width="100%" 
+                                height="100%" 
+                                style="border:0;" 
+                                loading="lazy" 
+                                allowfullscreen
+                                referrerpolicy="no-referrer-when-downgrade"
+                                src="">
+                            </iframe>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-6">
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="text-sm text-slate-500">Speed</p>
+                                <p id="speed-display" class="text-2xl font-bold text-slate-800">- km/h</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="text-sm text-slate-500">Battery</p>
+                                <p id="battery-display" class="text-2xl font-bold text-slate-800">- %</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg col-span-2">
+                                <p class="text-sm text-slate-500">Coordinates</p>
+                                <p id="coords-display" class="text-lg md:text-2xl font-bold text-slate-800">Lat: --, Lon: --</p>
+                            </div>
+                        </div>
+                        <div class="bg-emerald-50 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center">
+                            <div class="mb-4 md:mb-0">
+                                <p class="text-sm text-emerald-800">Current Location:</p>
+                                <p id="location-display" class="font-semibold text-emerald-900">Fetching location...</p>
+                            </div>
+                            <div class="flex space-x-3">
+                                <button onclick="showTripHistory()" class="py-2 px-4 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition text-sm">
+                                    View Trip History
+                                </button>
+                                <button onclick="forceRefresh()" class="py-2 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition text-sm">
+                                    Force Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="app-modal" class="modal-backdrop hidden">
+                <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-2xl">
+                    <div class="flex justify-between items-center border-b pb-3 mb-4">
+                        <h3 id="modal-title" class="text-2xl font-bold text-gray-800"></h3>
+                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    </div>
+                    <div id="modal-content" class="max-h-[60vh] overflow-y-auto text-sm font-mono whitespace-pre-wrap"></div>
+                </div>
+            </div>
+        </div>
+        <script>
+        const GOOGLE_MAPS_API_KEY = "YOUR_API_KEY_HERE";
+        const mockRoute = [
+            { lat: 28.7517, lon: 77.5841, name: "Near Police Station, Modinagar", speed: 0, status: "PARKED" },
+            { lat: 28.7525, lon: 77.5862, name: "Main Market Road", speed: 25, status: "MOVING" },
+            { lat: 28.7540, lon: 77.5890, name: "Crossing Highway NH34", speed: 45, status: "MOVING" },
+            { lat: 28.7510, lon: 77.5915, name: "Jain Nagar", speed: 30, status: "MOVING" },
+            { lat: 28.7485, lon: 77.5883, name: "Govindpuri Area", speed: 20, status: "MOVING" },
+            { lat: 28.7470, lon: 77.5870, name: "Charging Station, Govindpuri", speed: 0, status: "CHARGING" }
+        ];
+        const modal = document.getElementById('app-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        let vehicleState = { lat: mockRoute[0].lat, lon: mockRoute[0].lon, speed: mockRoute[0].speed, status: mockRoute[0].status, locationName: mockRoute[0].name, battery: 95.0 };
+        let tripHistory = [];
+        let routeIndex = 0;
+        let simulationInterval;
+        function updateGpsDisplay() {
+            document.getElementById('speed-display').textContent = `${vehicleState.speed} km/h`;
+            document.getElementById('battery-display').textContent = `${vehicleState.battery.toFixed(1)} %`;
+            document.getElementById('coords-display').textContent = `Lat: ${vehicleState.lat.toFixed(4)}, Lon: ${vehicleState.lon.toFixed(4)}`;
+            document.getElementById('location-display').textContent = vehicleState.locationName;
+            const statusElem = document.getElementById('vehicle-status');
+            statusElem.textContent = vehicleState.status;
+            statusElem.className = 'px-3 py-1 rounded-full text-white text-sm font-semibold '; 
+            if (vehicleState.status === 'MOVING') { statusElem.classList.add('bg-green-500'); } else if (vehicleState.status === 'PARKED') { statusElem.classList.add('bg-blue-500'); } else if (vehicleState.status === 'CHARGING') { statusElem.classList.add('bg-orange-500'); } else { statusElem.classList.add('bg-slate-500'); }
+            const mapEmbed = document.getElementById('google-map-embed');
+            const mapUrl = `https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}&q=${vehicleState.lat},${vehicleState.lon}&zoom=16`;
+            if (mapEmbed.src !== mapUrl) { mapEmbed.src = mapUrl; }
+        }
+        function simulateGpsUpdate() {
+            routeIndex = (routeIndex + 1) % mockRoute.length;
+            const newPosition = mockRoute[routeIndex];
+            vehicleState.lat = newPosition.lat;
+            vehicleState.lon = newPosition.lon;
+            vehicleState.speed = newPosition.speed;
+            vehicleState.status = newPosition.status;
+            vehicleState.locationName = newPosition.name;
+            if (vehicleState.status === 'MOVING') { vehicleState.battery = Math.max(0, vehicleState.battery - 0.5); } else if (vehicleState.status === 'CHARGING') { vehicleState.battery = Math.min(100, vehicleState.battery + 2.0); }
+            tripHistory.push({ time: new Date().toLocaleTimeString(), ...vehicleState });
+            if (tripHistory.length > 100) tripHistory.shift(); 
+            updateGpsDisplay();
+        }
+        function forceRefresh() { console.log("Forcing location refresh..."); simulateGpsUpdate(); }
+        function openModal(title, content = '') { modalTitle.textContent = title; modalContent.innerHTML = content; modal.classList.remove('hidden'); lucide.createIcons(); }
+        function closeModal() { modal.classList.add('hidden'); modalContent.innerHTML = ''; }
+        function showTripHistory() { if (tripHistory.length === 0) { openModal("Trip History", "No trip data recorded yet."); return; } let content = "Time        | Status   | Speed   | Location\n" + "-".repeat(60) + "\n"; [...tripHistory].reverse().slice(0, 20).forEach(log => { content += `${log.time.padEnd(12)}| ${log.status.padEnd(8)} | ${String(log.speed + 'km/h').padEnd(7)} | ${log.locationName}\n`; }); openModal("Trip History (Last 20 points)", content); }
+        function init() {
+            if (GOOGLE_MAPS_API_KEY === "YOUR_API_KEY_HERE" || !GOOGLE_MAPS_API_KEY) {
+                const mapContainer = document.querySelector('.w-full.h-80.md\\:h-96');
+                if(mapContainer) {
+                    mapContainer.innerHTML = `<div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; background-color:#e2e8f0; color:#475569; text-align:center; padding:1rem;"><strong>Google Maps API Key Missing</strong><p style="font-size:0.8rem; margin-top:0.5rem;">Please add your API key in the script to enable the map view.</p></div>`;
+                }
+            }
+            lucide.createIcons();
+            updateGpsDisplay();
+            simulationInterval = setInterval(simulateGpsUpdate, 7000); 
+        }
+        init();
+        window.addEventListener('beforeunload', () => { if(simulationInterval) { clearInterval(simulationInterval); } });
+        </script>
+    </template>
+    
+    <template id="template-fire_detection">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                --color-safe: #28a745; --color-caution: #ffc107; --color-danger: #dc3545;
+                --bg-dark: #1a1a2e; --bg-module: #16213e; --text-light: #e0e0e0; --border-color: #0f3460;
+                --current-zone-color: var(--color-safe); 
+            }
+            body {
+                font-family: 'Roboto Mono', monospace; background-color: var(--bg-dark); color: var(--text-light);
+                display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;
+            }
+            .battery-module-container {
+                background-color: var(--bg-module); padding: 30px 40px; border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); width: 90%; max-width: 400px;
+                text-align: center; border: 1px solid var(--border-color); transition: background-color 0.5s ease;
+            }
+            h2 { margin-top: 0; color: var(--text-light); font-size: 1.5em; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 25px; }
+            .gauge-container { position: relative; width: 200px; height: 200px; margin: 20px auto; }
+            .gauge-background, .gauge-arc { fill: none; stroke-width: 20; stroke-linecap: round; }
+            .gauge-background { stroke: #333; }
+            .gauge-arc { stroke: var(--current-zone-color); transform: rotate(-90deg); transform-origin: center; transition: stroke 0.5s ease, stroke-dasharray 0.5s ease; }
+            .gauge-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; font-weight: bold; }
+            .gauge-unit { font-size: 0.5em; }
+            #statusMessage { font-size: 1.2em; font-weight: bold; height: 20px; margin-bottom: 15px; color: var(--current-zone-color); transition: color 0.5s ease; }
+            #warningMessage { font-size: 1em; font-weight: bold; color: var(--color-danger); height: 50px; display: flex; align-items: center; justify-content: center; padding: 0 10px; }
+            .controls { margin-top: 25px; }
+            .controls label { display: block; margin-bottom: 10px; font-size: 0.9em; }
+            input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; background: #333; outline: none; border-radius: 5px; transition: opacity .2s; }
+            input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 25px; height: 25px; background: var(--current-zone-color); cursor: pointer; border-radius: 50%; border: 3px solid var(--bg-module); }
+            input[type="range"]::-moz-range-thumb { width: 25px; height: 25px; background: var(--current-zone-color); cursor: pointer; border-radius: 50%; border: 3px solid var(--bg-module); }
+            .zone-danger { background-color: rgba(220, 53, 69, 0.2); }
+            .zone-danger .gauge-arc { animation: flash-red 1s infinite; }
+            @keyframes flash-red { 50% { stroke-opacity: 0.3; } }
+        </style>
+        <div class="battery-module-container" id="moduleContainer">
+            <h2>🔋 Battery Temperature</h2>
+            <div class="gauge-container">
+                <svg width="200" height="200" viewBox="0 0 200 200">
+                    <circle class="gauge-background" cx="100" cy="100" r="90"></circle>
+                    <circle class="gauge-arc" id="gaugeArc" cx="100" cy="100" r="90" stroke-dasharray="0, 565.48"></circle>
+                </svg>
+                <div class="gauge-text" id="gaugeText">25<span class="gauge-unit">°C</span></div>
+            </div>
+            <p id="statusMessage">System Normal</p>
+            <p id="warningMessage"></p>
+            <div class="controls">
+                <label for="tempSlider">Simulate Live Temperature</label>
+                <input type="range" id="tempSlider" min="-10" max="60" value="25">
+            </div>
+        </div>
+        <audio id="alarmSound" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU0AAAAAAAAAAAA=" loop></audio>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const elements = { moduleContainer: document.getElementById('moduleContainer'), gaugeText: document.getElementById('gaugeText'), gaugeArc: document.getElementById('gaugeArc'), statusMessage: document.getElementById('statusMessage'), warningMessage: document.getElementById('warningMessage'), tempSlider: document.getElementById('tempSlider'), alarmSound: document.getElementById('alarmSound') };
+                const gaugeRadius = 90; const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+
+                // --- MODIFICATION: Audio Unlock for Mobile ---
+                // This module has no button, so we unlock audio on the first tap/click anywhere.
+                let isAudioUnlocked = false;
+                function unlockAudio() {
+                    if (isAudioUnlocked) return;
+                    try {
+                        elements.alarmSound.play();
+                        elements.alarmSound.pause();
+                    } catch (e) {
+                        console.warn("Fire alarm audio unlock failed.");
+                    }
+                    isAudioUnlocked = true;
+                    // Clean up the listeners
+                    document.body.removeEventListener('click', unlockAudio);
+                    document.body.removeEventListener('touchstart', unlockAudio);
+                }
+                document.body.addEventListener('click', unlockAudio);
+                document.body.addEventListener('touchstart', unlockAudio);
+                // --- END MODIFICATION ---
+
+                function getZoneDetails(temp) {
+                    const colors = { safe: 'var(--color-safe)', caution: 'var(--color-caution)', danger: 'var(--color-danger)'};
+                    if (temp > 45 || temp < 0) { return { className: 'zone-danger', statusText: 'DANGER', warningText: temp > 45 ? "OVERHEATING! Stop safely and power off." : "BATTERY TOO COLD! Performance limited.", color: colors.danger, isAlarming: true }; }
+                    if ((temp > 40 && temp <= 45) || (temp >= 0 && temp < 15)) { return { className: 'zone-caution', statusText: 'CAUTION', warningText: '', color: colors.caution, isAlarming: false }; }
+                    return { className: 'zone-safe', statusText: 'System Normal', warningText: '', color: colors.safe, isAlarming: false };
+                }
+                function updateDashboard(current_temp) {
+                    const zone = getZoneDetails(current_temp);
+                    elements.gaugeText.innerHTML = `${current_temp}<span class="gauge-unit">°C</span>`;
+                    elements.statusMessage.textContent = zone.statusText;
+                    elements.warningMessage.textContent = zone.warningText;
+                    elements.moduleContainer.className = `battery-module-container ${zone.className}`;
+                    document.documentElement.style.setProperty('--current-zone-color', zone.color);
+                    const tempRange = 70; const normalizedTemp = (current_temp + 10) / tempRange;
+                    const arcLength = Math.max(0, normalizedTemp * gaugeCircumference);
+                    elements.gaugeArc.style.strokeDasharray = `${arcLength} ${gaugeCircumference}`;
+                    
+                    // The audio unlock must happen *before* this can work on mobile
+                    if (zone.isAlarming && elements.alarmSound.paused) {
+                        elements.alarmSound.play().catch(e => console.error("Audio play failed (might need user interaction):", e));
+                    } else if (!zone.isAlarming && !elements.alarmSound.paused) {
+                        elements.alarmSound.pause();
+                        elements.alarmSound.currentTime = 0;
+                    }
+                }
+                elements.tempSlider.addEventListener('input', (event) => { updateDashboard(parseInt(event.target.value)); });
+                updateDashboard(parseInt(elements.tempSlider.value));
+            });
+        </script>
+    </template>
+
+    <template id="template-overload_detector">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Inter', sans-serif;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .main-container {
+                transition: background-color 0.5s ease-in-out;
+            }
+            .progress-bar-inner {
+                transition: height 0.5s ease-in-out, background-color 0.5s ease-in-out;
+            }
+            .toggle-checkbox:checked + .toggle-label {
+                background-color: #4ade80; /* green-400 */
+            }
+            .toggle-checkbox:checked + .toggle-label .toggle-ball {
+                transform: translateX(1.5rem);
+            }
+        </style>
+        <div class="bg-gray-900 flex items-center justify-center min-h-screen">
+            <div id="setup-screen" class="w-full max-w-md mx-auto p-6 bg-gray-800 text-white rounded-2xl shadow-lg">
+                <div class="text-center">
+                    <h1 class="text-2xl font-bold mb-2">Scooty Safety Assistant</h1>
+                    <p class="text-gray-400 mb-6">To get started, please select your scooty.</p>
+                </div>
+                <div>
+                    <label for="scooty-model" class="block text-sm font-medium text-gray-300 mb-2">Scooty Model</label>
+                    <select id="scooty-model" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="130">Honda Activa (130 Kg)</option>
+                        <option value="130">TVS Jupiter (130 Kg)</option>
+                        <option value="150">Suzuki Access (150 Kg)</option>
+                        <option value="180">Ola S1 Pro (180 Kg)</option>
+                        <option value="custom">Other</option>
+                    </select>
+                </div>
+                <div id="custom-capacity-wrapper" class="mt-4 hidden">
+                    <label for="custom-capacity" class="block text-sm font-medium text-gray-300 mb-2">Load Capacity (in Kg)</label>
+                    <input type="number" id="custom-capacity" placeholder="e.g., 140" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <button id="save-setup" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg mt-8 transition-colors">Start Setup</button>
+            </div>
+            <div id="main-screen" class="w-full max-w-md mx-auto h-screen sm:h-auto sm:max-h-[90vh] bg-gray-800 text-white rounded-2xl shadow-lg flex flex-col p-6 hidden">
+                <header class="flex justify-between items-center pb-4 border-b border-gray-700">
+                    <div>
+                        <h1 id="app-title" class="text-xl font-bold">Scooty Safety Assistant</h1>
+                        <p id="scooty-info" class="text-sm text-gray-400">Max Capacity: 130 Kg</p>
+                    </div>
+                    <button id="reset-app" class="text-sm text-blue-400 hover:text-blue-300">Reset</button>
+                </header>
+                <main class="flex-grow flex flex-col items-center justify-center py-6">
+                    <div class="w-full flex items-center justify-around gap-4">
+                        <div class="text-center">
+                            <p class="text-lg text-gray-400">Estimated Weight</p>
+                            <p id="weight-display" class="text-5xl font-bold">0 <span class="text-3xl text-gray-500">Kg</span></p>
+                            <p id="status-text" class="mt-2 font-semibold text-green-400 text-lg">Safe</p>
+                        </div>
+                        <div class="w-20 h-56 bg-gray-700 rounded-full flex flex-col-reverse overflow-hidden border-2 border-gray-600">
+                            <div id="progress-bar" class="w-full bg-green-500 rounded-full" style="height: 0%;"></div>
+                        </div>
+                    </div>
+                </main>
+                <footer class="pt-6 border-t border-gray-700">
+                    <div id="simulation-toggle-wrapper" class="flex items-center justify-between bg-gray-700 p-3 rounded-lg mb-4">
+                        <label for="simulation-mode-toggle" class="font-semibold text-lg">Hardware Simulation Mode</label>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="toggle" id="simulation-mode-toggle" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="toggle" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-500 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <div id="manual-controls">
+                        <div class="mb-4">
+                            <h3 class="font-semibold mb-2 text-lg">Riders</h3>
+                            <div class="flex gap-4">
+                                <button data-riders="1" class="rider-btn flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold text-lg">1 Rider</button>
+                                <button data-riders="2" class="rider-btn flex-1 bg-gray-600 text-white py-3 rounded-lg font-bold text-lg">2 Riders</button>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold mb-2 text-lg">Luggage</h3>
+                            <div class="flex gap-4">
+                                <button data-luggage="0" class="luggage-btn flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold">None</button>
+                                <button data-luggage="10" class="luggage-btn flex-1 bg-gray-600 text-white py-2 rounded-lg font-semibold">Light Bag</button>
+                                <button data-luggage="25" class="luggage-btn flex-1 bg-gray-600 text-white py-2 rounded-lg font-semibold">Heavy Luggage</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="simulation-controls" class="hidden">
+                         <label for="weight-slider" class="block font-semibold mb-2 text-lg">Set Weight from Sensor: <span id="slider-value" class="font-bold">70 Kg</span></label>
+                         <input type="range" id="weight-slider" min="0" max="200" value="70" class="w-full h-3 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </footer>
+            </div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... (Script is unchanged as it correctly initializes AudioContext on a user tap)
+            const setupScreen = document.getElementById('setup-screen'); const mainScreen = document.getElementById('main-screen'); const scootyModelSelect = document.getElementById('scooty-model'); const customCapacityWrapper = document.getElementById('custom-capacity-wrapper'); const customCapacityInput = document.getElementById('custom-capacity'); const saveSetupBtn = document.getElementById('save-setup'); const scootyInfo = document.getElementById('scooty-info'); const weightDisplay = document.getElementById('weight-display'); const statusText = document.getElementById('status-text'); const progressBar = document.getElementById('progress-bar'); const riderBtns = document.querySelectorAll('.rider-btn'); const luggageBtns = document.querySelectorAll('.luggage-btn'); const resetBtn = document.getElementById('reset-app'); const simulationToggle = document.getElementById('simulation-mode-toggle'); const manualControls = document.getElementById('manual-controls'); const simulationControls = document.getElementById('simulation-controls'); const weightSlider = document.getElementById('weight-slider'); const sliderValue = document.getElementById('slider-value');
+            let state = { maxCapacity: 130, riders: 1, luggage: 0, isSimulationMode: false, simulatedWeight: 70, };
+            const AVERAGE_PERSON_WEIGHT = 70; const BEEP_INTERVAL = 400; 
+            let audioCtx; let beepIntervalId = null; let oscillator;
+            function initializeAudio() { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { console.error("Web Audio API is not supported in this browser"); } } }
+            function playBeep() { if (!audioCtx) return; if (beepIntervalId) return; beepIntervalId = setInterval(() => { oscillator = audioCtx.createOscillator(); const gainNode = audioCtx.createGain(); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); gainNode.gain.setValueAtTime(1, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1); oscillator.connect(gainNode); gainNode.connect(audioCtx.destination); oscillator.start(audioCtx.currentTime); oscillator.stop(audioCtx.currentTime + 0.1); }, BEEP_INTERVAL); }
+            function stopBeep() { if (beepIntervalId) { clearInterval(beepIntervalId); beepIntervalId = null; } if (oscillator) { oscillator.stop(); } }
+            function calculateWeight() { if (state.isSimulationMode) { return state.simulatedWeight; } return (state.riders * AVERAGE_PERSON_WEIGHT) + state.luggage; }
+            function updateUI() { const currentWeight = calculateWeight(); const percentage = Math.min(100, (currentWeight / state.maxCapacity) * 100); weightDisplay.innerHTML = `${currentWeight} <span class="text-3xl text-gray-500">Kg</span>`; scootyInfo.textContent = `Max Capacity: ${state.maxCapacity} Kg`; progressBar.style.height = `${percentage}%`; if (currentWeight > state.maxCapacity) { statusText.textContent = 'Overload!'; statusText.className = 'mt-2 font-semibold text-red-400 text-lg'; mainScreen.style.backgroundColor = '#581c1c'; progressBar.style.backgroundColor = '#f87171'; playBeep(); } else if (currentWeight > state.maxCapacity * 0.85) { statusText.textContent = 'Approaching Limit'; statusText.className = 'mt-2 font-semibold text-yellow-400 text-lg'; mainScreen.style.backgroundColor = '#5a450c'; progressBar.style.backgroundColor = '#facc15'; stopBeep(); } else { statusText.textContent = 'Safe'; statusText.className = 'mt-2 font-semibold text-green-400 text-lg'; mainScreen.style.backgroundColor = '#1f2937'; progressBar.style.backgroundColor = '#4ade80'; stopBeep(); } }
+            scootyModelSelect.addEventListener('change', (e) => { if (e.target.value === 'custom') { customCapacityWrapper.classList.remove('hidden'); } else { customCapacityWrapper.classList.add('hidden'); } });
+            saveSetupBtn.addEventListener('click', () => { initializeAudio(); const selectedValue = scootyModelSelect.value; let capacity; if (selectedValue === 'custom') { capacity = parseInt(customCapacityInput.value) || 130; } else { capacity = parseInt(selectedValue); } state.maxCapacity = capacity; localStorage.setItem('scootySafetyConfig', JSON.stringify({ maxCapacity: capacity })); setupScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); updateUI(); });
+            riderBtns.forEach(btn => { btn.addEventListener('click', () => { state.riders = parseInt(btn.dataset.riders); riderBtns.forEach(b => b.classList.replace('bg-blue-600', 'bg-gray-600')); btn.classList.replace('bg-gray-600', 'bg-blue-600'); updateUI(); }); });
+            luggageBtns.forEach(btn => { btn.addEventListener('click', () => { state.luggage = parseInt(btn.dataset.luggage); luggageBtns.forEach(b => b.classList.replace('bg-blue-600', 'bg-gray-600')); btn.classList.replace('bg-gray-600', 'bg-blue-600'); updateUI(); }); });
+            simulationToggle.addEventListener('change', () => { state.isSimulationMode = simulationToggle.checked; if (state.isSimulationMode) { manualControls.classList.add('hidden'); simulationControls.classList.remove('hidden'); } else { manualControls.classList.remove('hidden'); simulationControls.add('hidden'); } updateUI(); });
+            weightSlider.addEventListener('input', (e) => { state.simulatedWeight = parseInt(e.target.value); sliderValue.textContent = `${state.simulatedWeight} Kg`; updateUI(); });
+            resetBtn.addEventListener('click', () => { localStorage.removeItem('scootySafetyConfig'); window.location.reload(); });
+            function init() { const savedConfig = localStorage.getItem('scootySafetyConfig'); if (savedConfig) { const config = JSON.parse(savedConfig); state.maxCapacity = config.maxCapacity; setupScreen.classList.add('hidden'); mainScreen.classList.remove('hidden'); updateUI(); } else { setupScreen.classList.remove('hidden'); mainScreen.classList.add('hidden'); } }
+            init();
+        });
+        </script>
+    </template>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const moduleFrame = document.getElementById('module-frame');
+            const navLinks = document.querySelectorAll('#nav-links .sidebar-link');
+            const menuBtn = document.getElementById('menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            const moduleTitle = document.getElementById('module-title');
+
+            let currentObjectUrl = null; 
+
+            function loadModule(moduleName, linkElement) {
+                const template = document.getElementById(`template-${moduleName}`);
+                if (template) {
+                    if (currentObjectUrl) {
+                        URL.revokeObjectURL(currentObjectUrl);
+                    }
+                    const htmlContent = template.innerHTML;
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    currentObjectUrl = URL.createObjectURL(blob);
+                    moduleFrame.src = currentObjectUrl;
+                    
+                    navLinks.forEach(link => link.classList.remove('active'));
+                    if (linkElement) {
+                        linkElement.classList.add('active');
+                        moduleTitle.textContent = linkElement.querySelector('span').textContent;
+                    }
+                    
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.remove('open');
+                    }
+                } else {
+                    console.error(`Module template not found for: ${moduleName}`);
+                }
+            }
+            
+            function enableAllModules() {
+                navLinks.forEach(link => {
+                    link.classList.remove('disabled');
+                });
+            }
+
+            function disableOtherModules() {
+                navLinks.forEach((link, index) => {
+                    if (index > 0) { 
+                        link.classList.add('disabled');
+                    }
+                });
+                loadModule('fingerprint', navLinks[0]);
+            }
+
+            window.addEventListener('message', function(event) {
+                if (event.data === 'login-success') {
+                    enableAllModules();
+                } else if (event.data === 'logout-event') {
+                    disableOtherModules();
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const moduleName = this.dataset.module;
+                    loadModule(moduleName, this);
+                });
+            });
+
+            menuBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+            });
+            
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth < 768 && sidebar.classList.contains('open')) {
+                    const isClickInsideSidebar = sidebar.contains(event.target);
+                    const isClickOnMenuBtn = menuBtn.contains(event.target);
+                    if (!isClickInsideSidebar && !isClickOnMenuBtn) {
+                        sidebar.classList.remove('open');
+                    }
+                }
+            });
+
+            // Initial setup on page load
+            if (localStorage.getItem('isLoggedIn') === 'true') {
+                enableAllModules();
+                loadModule('fingerprint', navLinks[0]); 
+            } else {
+                disableOtherModules();
+            }
+            
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
